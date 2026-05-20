@@ -1,0 +1,91 @@
+<div class="px-16 flex flex-col justify-center text-white">
+
+    <div class="flex items-start justify-between w-full mt-10 mb-8 gap-48">
+
+        <div>
+            <button (click)="goBack()"
+                class="text-white/40 text-sm mb-2 hover:text-white/70 transition flex items-center gap-1">
+                ← Terug
+            </button>
+            <h1 class="text-2xl font-bold">
+                Kies een logbestand
+            </h1>
+        </div>
+
+        <p class="text-white/40 font-bold mt-1 text-right">
+            {{ selectedProjectLabel }}
+        </p>
+
+    </div>
+
+    <h3 class="mb-3.5 text-white/60 text-sm">
+        Logbestanden in <span class="text-white font-bold">{{ selectedProjectLabel }}</span>:
+    </h3>
+
+    @if (isProjectsLoading || isLogsLoading) {
+    <p class="text-white/40 text-sm">Laden...</p>
+    }
+
+    @if (error) {
+    <p class="text-red-400 text-sm">{{ error }}</p>
+    }
+
+    @if (!isProjectsLoading && !isLogsLoading && !error) {
+    <div class="flex flex-col gap-3">
+
+        @for (file of logFiles; track file.name) {
+
+        <div (click)="selectFile(file.name)" [class]="'flex items-center w-full h-16 border rounded-[0.5rem] px-4 gap-4 cursor-pointer transition ' +
+                   (selectedFile === file.name
+                     ? 'bg-[#404040] border-white/60'
+                     : 'bg-[#353535] border-white/20 hover:bg-[#404040] hover:border-white/50')">
+
+            <div class="flex items-center self-stretch pr-4 border-r border-white/20 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 26 31" fill="none">
+                    <path
+                        d="M24.849 6.57366C25.1649 6.89658 25.4358 7.33482 25.6615 7.88839C25.8872 8.44196 26 8.9494 26 9.41071V29.3393C26 29.8006 25.842 30.1927 25.526 30.5156C25.2101 30.8385 24.8264 31 24.375 31H1.625C1.17361 31 0.789931 30.8385 0.473958 30.5156C0.157986 30.1927 0 29.8006 0 29.3393V1.66071C0 1.1994 0.157986 0.807292 0.473958 0.484375C0.789931 0.161458 1.17361 0 1.625 0H16.7917C17.2431 0 17.7396 0.115327 18.2813 0.345982C18.8229 0.576637 19.2517 0.853423 19.5677 1.17634L24.849 6.57366ZM17.3333 2.35268V8.85714H23.6979C23.5851 8.52269 23.4609 8.28627 23.3255 8.14788L18.0273 2.73326C17.8919 2.59487 17.6606 2.46801 17.3333 2.35268ZM23.8333 28.7857V11.0714H16.7917C16.3403 11.0714 15.9566 10.91 15.6406 10.5871C15.3247 10.2641 15.1667 9.87202 15.1667 9.41071V2.21429H2.16667V28.7857H23.8333ZM6.5 13.8393C6.5 13.6778 6.55078 13.5452 6.65234 13.4414C6.75391 13.3376 6.88368 13.2857 7.04167 13.2857H18.9583C19.1163 13.2857 19.2461 13.3376 19.3477 13.4414C19.4492 13.5452 19.5 13.6778 19.5 13.8393V14.9464C19.5 15.1079 19.4492 15.2405 19.3477 15.3443C19.2461 15.4481 19.1163 15.5 18.9583 15.5H7.04167C6.88368 15.5 6.75391 15.4481 6.65234 15.3443C6.55078 15.2405 6.5 15.1079 6.5 14.9464V13.8393ZM18.9583 17.7143C19.1163 17.7143 19.2461 17.7662 19.3477 17.87C19.4492 17.9738 19.5 18.1064 19.5 18.2679V19.375C19.5 19.5365 19.4492 19.6691 19.3477 19.7729C19.2461 19.8767 19.1163 19.9286 18.9583 19.9286H7.04167C6.88368 19.9286 6.75391 19.8767 6.65234 19.7729C6.55078 19.6691 6.5 19.5365 6.5 19.375V18.2679C6.5 18.1064 6.55078 17.9738 6.65234 17.87C6.75391 17.7662 6.88368 17.7143 7.04167 17.7143H18.9583ZM18.9583 22.1429C19.1163 22.1429 19.2461 22.1948 19.3477 22.2985C19.4492 22.4023 19.5 22.535 19.5 22.6964V23.8036C19.5 23.965 19.4492 24.0977 19.3477 24.2014C19.2461 24.3052 19.1163 24.3571 18.9583 24.3571H7.04167C6.88368 24.3571 6.75391 24.3052 6.65234 24.2014C6.55078 24.0977 6.5 23.965 6.5 23.8036V22.6964C6.5 22.535 6.55078 22.4023 6.65234 22.2985C6.75391 22.1948 6.88368 22.1429 7.04167 22.1429H18.9583Z"
+                        fill="white" fill-opacity="0.4" />
+                </svg>
+            </div>
+
+            <div class="flex flex-col gap-0.5 font-bold flex-1 min-w-0">
+                <p class="truncate">{{ file.name }}</p>
+                <div class="text-white/50 text-sm font-normal">
+                    {{ file.size }} &nbsp;·&nbsp; Gewijzigd: {{ file.modified }}
+                </div>
+            </div>
+
+            @if (selectedFile === file.name) {
+            <span class="text-white text-lg shrink-0">✓</span>
+            } @else {
+            <span class="text-white/30 text-lg shrink-0">→</span>
+            }
+
+        </div>
+
+        } @empty {
+        <p class="text-white/40 text-sm">Geen logbestanden gevonden.</p>
+        }
+
+    </div>
+
+    @if (logFiles.length > 0) {
+    <button (click)="openDashboard()" [disabled]="!selectedFile" class="h-10
+               bg-[#353535]
+               my-8
+               border border-white/50
+               rounded-lg
+               text-white
+               font-bold
+               hover:bg-[#404040]
+               hover:border-white/80
+               disabled:opacity-30
+               disabled:cursor-not-allowed
+               transition">
+        Dashboard openen →
+    </button>
+    }
+
+    }
+
+</div>

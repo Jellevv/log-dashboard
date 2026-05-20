@@ -1,0 +1,74 @@
+<div class="px-16 flex flex-col justify-center text-white">
+
+    <h1 class="text-2xl font-bold mt-10 mb-8">
+        SSH Verbinding Instellen
+    </h1>
+
+    <div class="flex flex-col gap-y-6">
+        <div class="flex flex-col gap-1">
+            <label class="text-base font-bold">
+                SSH Host
+            </label>
+            <input [(ngModel)]="sshHost" type="text" placeholder="user@192.168.1.10" class="w-[33.8125rem] h-[2.5rem]
+               bg-[#353535]
+               border border-white/50
+               rounded-lg
+               text-white
+               px-3" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <label class="text-base font-bold">
+                Pad naar logs
+            </label>
+            <input [(ngModel)]="logsPath" type="text" placeholder="/var/www/html/storage/logs" class="w-[33.8125rem] h-[2.5rem]
+               bg-[#353535]
+               border border-white/50
+               rounded-lg
+               text-white
+               px-3" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <label class="text-base font-bold">
+                Wachtwoord
+            </label>
+            <input [(ngModel)]="password" type="password" placeholder="Wachtwoord voor SSH" class="w-[33.8125rem] h-[2.5rem]
+               bg-[#353535]
+               border border-white/50
+               rounded-lg
+               text-white
+               px-3" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <label class="text-base font-bold">
+                Projectnaam
+            </label>
+            <input [(ngModel)]="projectName" type="text" placeholder="my-project" class="w-[33.8125rem] h-[2.5rem]
+               bg-[#353535]
+               border border-white/50
+               rounded-lg
+               text-white
+               px-3" />
+        </div>
+    </div>
+
+    @if (error) {
+        <p class="text-red-400 text-sm mt-2">{{ error }}</p>
+    }
+
+    <button (click)="connect()" class="h-10
+         bg-[#353535]
+         my-8
+         border border-white
+         rounded-lg
+         text-white
+         font-bold
+         hover:bg-[#404040]
+         transition"
+        [disabled]="isLoading">
+        {{ isLoading ? 'Verbinding maken...' : 'Verbinding maken →' }}
+    </button>
+
+</div>

@@ -1,0 +1,6 @@
+services:
+  web:
+    volumes:
+      - /home/jelle:/mnt/home:ro
+      - /home/jelle/projects:/mnt/projects:ro
+      - /home/jelle/llm-craft-project:/mnt/llm-craft-project:ro
