@@ -36,6 +36,8 @@ export class LogDashboard implements OnInit, OnDestroy {
 
   selectedLog: LogEntry | null = null;
 
+  newEntryBoundary = 0;
+
   private refreshInterval: ReturnType<typeof setInterval> | null = null;
   private destroy$ = new Subject<void>();
   private requesting = false;
@@ -72,6 +74,7 @@ export class LogDashboard implements OnInit, OnDestroy {
     this.currentPage = 1;
     this.entries = [];
     this.hasMore = false;
+    this.newEntryBoundary = 0;
     this.fetchPage(false);
   }
 
@@ -145,7 +148,7 @@ export class LogDashboard implements OnInit, OnDestroy {
 
     this.refreshInterval = setInterval(() => {
       this.refreshLatest();
-    }, 10_000);
+    }, 5_000);
   }
 
   stopAutoRefresh() {
@@ -167,7 +170,6 @@ export class LogDashboard implements OnInit, OnDestroy {
       search: this.searchQuery.trim(),
     }).subscribe({
       next: (page) => {
-
         if (myRequest !== this.requestId) return;
 
         const existing = new Set(
@@ -180,6 +182,9 @@ export class LogDashboard implements OnInit, OnDestroy {
 
         if (newEntries.length > 0) {
           this.entries = [...newEntries, ...this.entries];
+          this.newEntryBoundary = Math.min(
+            this.newEntryBoundary + newEntries.length,
+          );
         }
 
         this.cdr.detectChanges();
@@ -259,4 +264,5 @@ export class LogDashboard implements OnInit, OnDestroy {
     if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1_048_576).toFixed(1)} MB`;
   }
+
 }

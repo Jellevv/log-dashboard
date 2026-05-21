@@ -89,6 +89,9 @@ class LogParser
         $requestUrl = null;
         $codeLocation = null;
 
+        $displayTitle = null;
+        $displaySubtitle = null;
+
         if (preg_match('/"memory":(\d+)/', $entry, $memMatch)) {
             $memory = (int) $memMatch[1];
             $entry = preg_replace('/\s*\{"memory":\d+\}/', '', $entry);
@@ -109,22 +112,11 @@ class LogParser
         $component = $matches['component'] ?? null;
         $message = trim($matches['message']);
 
-        if (preg_match('#\b(https?://[^\s"\']+|/(admin|api)/[^\s"\']+)#', $message, $m)) {
-            $url = $m[1];
+        $displayTitle = $component ?: 'System';
 
-            $url = preg_replace('#^https?://[^/]+#', '', $url);
-
-            $url = explode('?', $url)[0];
-
-            $url = preg_split('/["\']|HTTP_|,/', $url)[0];
-
-            $url = rtrim($url, " \t\n\r\0\x0B,.;");
-
-            if (strlen($url) > 150) {
-                $url = substr($url, 0, 150) . '…';
-            }
-
-            $requestUrl = $url;
+        if (preg_match('#\b(https?://[^\s"\']+|/(admin|api|concerten)/[^\s"\']*)#', $message, $m)) {
+            $url = preg_replace('#^https?://[^/]+#', '', $m[1]);
+            $requestUrl = rtrim(explode('?', $url)[0], ",\"' ");
         }
 
         if (preg_match('#(/[^\s()]+\.php:\d+)#', $message, $m)) {
@@ -139,21 +131,11 @@ class LogParser
                 $context = json_last_error() === JSON_ERROR_NONE
                     ? $decoded
                     : $m[1];
-
-                $message = trim(str_replace($m[0], 'request context', $message));
-            }
-
-            elseif (preg_match('/request context:\s*array\s*\((.*?)\)/is', $message, $m)) {
+            } elseif (preg_match('/request context:(.*)$/is', $message, $m)) {
                 $context = trim($m[1]);
-                $message = trim(str_replace($m[0], 'request context', $message));
             }
 
-            else {
-                if (preg_match('/request context:(.*)$/is', $message, $m)) {
-                    $context = trim($m[1]);
-                    $message = trim(str_replace($m[0], 'request context', $message));
-                }
-            }
+            $message = trim(str_replace($m[0] ?? 'request context', '', $message));
         }
 
         if (preg_match('/(\{.*\})\s*$/s', $message, $jsonMatch)) {
@@ -183,29 +165,48 @@ class LogParser
             }
         }
 
+        if (is_array($context) && isset($context['exception'])) {
+            $exception = preg_replace('/\s+/', ' ', $context['exception']);
+            unset($context['exception']);
+        }
+
         if (is_array($context)) {
-            if (isset($context['exception'])) {
-                $exception = $context['exception'];
-                unset($context['exception']);
+
+            unset($context['memory'], $context['trace']);
+
+            if (isset($context['REQUEST_URI'])) {
+                $requestUrl = $requestUrl ?: $context['REQUEST_URI'];
             }
 
-            if (isset($context['trace']) && is_array($context['trace'])) {
-                $stackTrace = implode("\n", $context['trace']);
-                unset($context['trace']);
+            if (isset($context['REQUEST_METHOD'])) {
+                $displaySubtitle = $context['REQUEST_METHOD'] . ' ' . ($requestUrl ?? '');
             }
+
+            if (empty($context)) {
+                $context = null;
+            }
+        }
+
+        if (trim($message) === '' || trim(strtolower($message)) === 'request context') {
+            $message = $requestUrl ?: 'Request context';
         }
 
         return [
             'timestamp' => $timestamp,
             'level' => $level,
             'component' => $component,
-            'message' => $message ?: '(no message)',
+            'message' => $message,
+
             'stackTrace' => $stackTrace,
             'context' => $context,
             'exception' => $exception,
+
             'codeLocation' => $codeLocation,
             'requestUrl' => $requestUrl,
             'memory' => $memory,
+
+            'displayTitle' => $displayTitle,
+            'displaySubtitle' => $displaySubtitle,
         ];
     }
 

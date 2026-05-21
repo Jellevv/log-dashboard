@@ -22,7 +22,7 @@ export class SshSetup {
   constructor(
     private router: Router,
     private logService: LogFilesService
-  ) {}
+  ) { }
 
   connect() {
     if (!this.sshHost || !this.logsPath || !this.password || !this.projectName) {
@@ -44,7 +44,7 @@ export class SshSetup {
         this.router.navigate(['/logs'], {
           queryParams: {
             project: 'dynamic',
-            projectName: this.projectName, 
+            projectName: this.projectName,
           }
         });
       },
@@ -54,4 +54,15 @@ export class SshSetup {
       }
     });
   }
+  //TIJDELIJK (live debug)
+  connectLocal() {
+    this.logService.connectLocalProject(
+      '/var/www/html/storage/logs',
+      'Local Dev'
+    );
+    this.router.navigate(['/logs'], {
+      queryParams: { project: 'dynamic', projectName: 'Local Dev' }
+    });
+  }
 }
+

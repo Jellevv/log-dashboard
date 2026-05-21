@@ -12,10 +12,13 @@ export interface Project {
 export interface DynamicProject {
   id: 'dynamic';
   label: string;
-  ssh: {
+  ssh?: {                    // now optional
     host: string;
     user: string;
     password: string;
+    path: string;
+  };
+  local?: {                  // new
     path: string;
   };
 }
@@ -31,11 +34,9 @@ export interface LogEntry {
   level: string;
   component?: string;
   message: string;
-
   stackTrace?: string | null;
   context?: any | null;
   exception?: string | null;
-
   requestUrl?: string | null;
   codeLocation?: string | null;
   memory?: number | null;
@@ -62,10 +63,8 @@ export class LogFilesService {
 
   getProjects(): Observable<Project[]> {
     return this.http.get<Project[]>(`${this.base}/projects`).pipe(
-      map(projects => {
-        if (!this.dynamicProject) {
-          return [];
-        }
+      map(() => {
+        if (!this.dynamicProject) return [];
         return [{ id: this.dynamicProject.id, label: this.dynamicProject.label }];
       })
     );
@@ -84,12 +83,31 @@ export class LogFilesService {
     );
   }
 
+  // No HTTP call needed — just store it locally
+  connectLocalProject(path: string, projectName: string): void {
+    this.dynamicProject = {
+      id: 'dynamic',
+      label: projectName,
+      local: { path },
+    };
+  }
+
   getLogs(projectId: string): Observable<LogFiles[]> {
     if (projectId === 'dynamic' && this.dynamicProject) {
-      return this.http.post<LogFiles[]>(`${this.base}/logs`, {
-        project: projectId,
-        ssh: this.dynamicProject.ssh,
-      });
+      const payload: any = { project: projectId };
+
+      // TIJDELIJK (live debug)
+      if (this.dynamicProject.local) {
+        payload.mode = 'local';
+        payload.local = this.dynamicProject.local;
+      } else {
+        // END TIJDELIJK
+        payload.ssh = this.dynamicProject.ssh;
+        // TIJDELIJK (live debug)
+      }
+      // END TIJDELIJK
+
+      return this.http.post<LogFiles[]>(`${this.base}/logs`, payload);
     }
 
     return this.http.get<LogFiles[]>(`${this.base}/logs`, {
@@ -102,7 +120,7 @@ export class LogFilesService {
     fileName: string,
     options: { page?: number; limit?: number; level?: Filter; search?: string } = {}
   ): Observable<LogPage> {
-    const payload = {
+    const payload: any = {
       project: projectId,
       file: fileName,
       page: String(options.page ?? 1),
@@ -112,10 +130,18 @@ export class LogFilesService {
     };
 
     if (projectId === 'dynamic' && this.dynamicProject) {
-      return this.http.post<LogPage>(`${this.base}/log-content`, {
-        ...payload,
-        ssh: this.dynamicProject.ssh,
-      });
+      // TIJDELIJK (live debug)
+      if (this.dynamicProject.local) {
+        payload.mode = 'local';
+        payload.local = this.dynamicProject.local;
+      } else {
+        // END TIJDELIJK
+        payload.ssh = this.dynamicProject.ssh;
+        // TIJDELIJK (live debug)
+      }
+      // END TIJDELIJK
+
+      return this.http.post<LogPage>(`${this.base}/log-content`, payload);
     }
 
     return this.http.get<LogPage>(`${this.base}/log-content`, { params: payload });

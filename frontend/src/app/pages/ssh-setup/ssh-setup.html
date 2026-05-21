@@ -55,7 +55,7 @@
     </div>
 
     @if (error) {
-        <p class="text-red-400 text-sm mt-2">{{ error }}</p>
+    <p class="text-red-400 text-sm mt-2">{{ error }}</p>
     }
 
     <button (click)="connect()" class="h-10
@@ -66,9 +66,13 @@
          text-white
          font-bold
          hover:bg-[#404040]
-         transition"
-        [disabled]="isLoading">
+         transition" [disabled]="isLoading">
         {{ isLoading ? 'Verbinding maken...' : 'Verbinding maken →' }}
+    </button>
+
+    <!-- TIJDELIJK (live debug) -->
+    <button (click)="connectLocal()" class="text-xs text-white/20">
+        dev: local logs
     </button>
 
 </div>
