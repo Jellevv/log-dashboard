@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
-import { LogFilesService, LogFiles, Project } from '../../services/log-files';
+import { LogFilesService, LogFiles } from '../../services/log-files';
 import { FormsModule } from '@angular/forms';
 import { take } from 'rxjs/operators';
 
@@ -15,11 +15,9 @@ import { take } from 'rxjs/operators';
 export class LogFileSelect implements OnInit {
 
   logFiles: LogFiles[] = [];
-  projects: Project[] = [];
   projectId = '';
-  projectName = '';   // ← the human-readable label from ssh-setup
+  projectName = '';
   selectedFile = '';
-  isProjectsLoading = false;
   isLogsLoading = false;
   error = '';
 
@@ -31,30 +29,16 @@ export class LogFileSelect implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.isProjectsLoading = true;
-
     this.route.queryParamMap.pipe(take(1)).subscribe((params) => {
       this.projectId   = params.get('project')     ?? '';
       this.projectName = params.get('projectName') ?? '';
 
-      this.logService.getProjects().subscribe({
-        next: (projects) => {
-          this.projects = projects;
-          this.isProjectsLoading = false;
+      if (!this.projectId || this.projectId !== 'dynamic') {
+        this.router.navigate(['/ssh']);
+        return;
+      }
 
-          if (!this.projectId || this.projectId !== 'dynamic') {
-            this.router.navigate(['/ssh']);
-            return;
-          }
-
-          this.loadLogs();
-        },
-        error: (err) => {
-          console.error(err);
-          this.error = 'Kon projecten niet ophalen.';
-          this.isProjectsLoading = false;
-        }
-      });
+      this.loadLogs();
     });
   }
 
@@ -80,14 +64,8 @@ export class LogFileSelect implements OnInit {
     });
   }
 
-  onProjectChange(event: Event) {
-    this.projectId = (event.target as HTMLSelectElement).value;
-    this.loadLogs();
-  }
-
   get selectedProjectLabel(): string {
-    if (this.projectName) return this.projectName;
-    return this.projects.find(p => p.id === this.projectId)?.label ?? this.projectId;
+    return this.projectName || this.projectId;
   }
 
   selectFile(fileName: string) {
@@ -99,7 +77,7 @@ export class LogFileSelect implements OnInit {
     this.router.navigate(['/dashboard'], {
       queryParams: {
         project:     this.projectId,
-        projectName: this.projectName, 
+        projectName: this.projectName,
         file:        this.selectedFile,
       }
     });

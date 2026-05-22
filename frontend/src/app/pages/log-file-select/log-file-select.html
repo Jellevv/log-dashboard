@@ -22,15 +22,15 @@
         Logbestanden in <span class="text-white font-bold">{{ selectedProjectLabel }}</span>:
     </h3>
 
-    @if (isProjectsLoading || isLogsLoading) {
-    <p class="text-white/40 text-sm">Laden...</p>
+    @if (isLogsLoading) {
+         <p class="text-white/40 text-sm">Laden...</p>
     }
 
     @if (error) {
     <p class="text-red-400 text-sm">{{ error }}</p>
     }
 
-    @if (!isProjectsLoading && !isLogsLoading && !error) {
+    @if (!isLogsLoading && !error) {
     <div class="flex flex-col gap-3">
 
         @for (file of logFiles; track file.name) {

@@ -12,25 +12,19 @@ class LogParser
         string $search = ''
     ): array {
         $content = file_get_contents($filePath);
-
         if ($content === false) {
             return self::emptyResult($page, $limit);
         }
 
         $isPreGrouped = str_contains($content, '---LOGDASH_SEP---');
-
-        $rawBlocks = $isPreGrouped
-            ? self::splitPreGrouped($content)
-            : self::splitRawLines($content);
+        $rawBlocks = self::splitRawLines($content);
 
         $search = strtolower(trim($search));
         $levelFilter = strtoupper(trim($level));
         $offset = ($page - 1) * $limit;
-
         $collected = [];
         $totalAll = 0;
         $totalMatch = 0;
-
         $counts = ['ERROR' => 0, 'WARNING' => 0, 'INFO' => 0];
 
         foreach ($rawBlocks as $block) {
@@ -39,32 +33,24 @@ class LogParser
                 continue;
 
             $totalAll++;
-
             $entryLevel = $entry['level'] ?? 'INFO';
-            if (isset($counts[$entryLevel])) {
+            if (isset($counts[$entryLevel]))
                 $counts[$entryLevel]++;
-            }
 
-            if ($levelFilter !== 'ALL' && $entryLevel !== $levelFilter) {
+            if ($levelFilter !== 'ALL' && $entryLevel !== $levelFilter)
                 continue;
-            }
 
-            if ($search !== '') {
-                $haystack = strtolower(
-                    ($entry['message'] ?? '') . ' ' .
-                    ($entry['component'] ?? '') . ' ' .
-                    ($entry['requestUrl'] ?? '') . ' ' .
-                    json_encode($entry['context'] ?? '') . ' ' .
-                    ($entry['stackTrace'] ?? '')
-                );
+            $searchText = strtolower(
+                $entry['message'] . ' ' .
+                ($entry['exception'] ?? '') . ' ' .
+                ($entry['stackTrace'] ?? '') . ' ' .
+                json_encode($entry['context'] ?? [])
+            );
 
-                if (!str_contains($haystack, $search)) {
-                    continue;
-                }
-            }
+            if ($search !== '' && !str_contains($searchText, $search))
+                continue;
 
             $totalMatch++;
-
             if ($totalMatch > $offset && count($collected) < $limit) {
                 $collected[] = $entry;
             }
@@ -80,169 +66,137 @@ class LogParser
         ];
     }
 
-    private static function parseSingleEntry(string $entry): ?array
+    private static function parseSingleEntry(string $raw): ?array
     {
-        $memory = null;
-        $context = null;
-        $stackTrace = null;
-        $exception = null;
-        $requestUrl = null;
-        $codeLocation = null;
-
-        $displayTitle = null;
-        $displaySubtitle = null;
-
-        if (preg_match('/"memory":(\d+)/', $entry, $memMatch)) {
-            $memory = (int) $memMatch[1];
-            $entry = preg_replace('/\s*\{"memory":\d+\}/', '', $entry);
-        }
+        $raw = trim($raw);
 
         if (
             !preg_match(
-                '/^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(?<level>[^\]]+)\](?:\s+\[(?<component>[^\]]+)\])?\s*(?<message>.*)/s',
-                $entry,
-                $matches
+                '/^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(?<level>[^\]]+)\](?:\s+\[(?<component>[^\]]+)\])?\s*(?<body>.*)/s',
+                $raw,
+                $m
             )
-        ) {
+        )
             return null;
+
+        $timestamp = $m['timestamp'];
+        $level = strtoupper(preg_replace('/^.*\./', '', $m['level']));
+        $component = ($m['component'] ?? '') ?: null;
+        $body = trim($m['body']);
+
+        $memory = null;
+        $stackTrace = null;
+        $codeLocation = null;
+        $requestUrl = null;
+        $context = null;
+        $exception = null;
+
+        if (preg_match('/"memory":(\d+)/', $body, $mm)) {
+            $memory = (int) $mm[1];
+            $body = trim(preg_replace('/,?\s*"memory":\d+/', '', $body));
+            $body = trim(preg_replace('/\{\s*\}/', '', $body));
         }
 
-        $timestamp = $matches['timestamp'];
-        $level = strtoupper(preg_replace('/^.*\./', '', $matches['level']));
-        $component = $matches['component'] ?? null;
-        $message = trim($matches['message']);
+        if (str_contains($body, 'Stack trace:')) {
+            [$before, $after] = explode('Stack trace:', $body, 2);
+            $body = rtrim($before);
+            $stackTrace = trim($after);
 
-        $displayTitle = $component ?: 'System';
-
-        if (preg_match('#\b(https?://[^\s"\']+|/(admin|api|concerten)/[^\s"\']*)#', $message, $m)) {
-            $url = preg_replace('#^https?://[^/]+#', '', $m[1]);
-            $requestUrl = rtrim(explode('?', $url)[0], ",\"' ");
-        }
-
-        if (preg_match('#(/[^\s()]+\.php:\d+)#', $message, $m)) {
-            $codeLocation = $m[1];
-        }
-
-        if (stripos($message, 'request context') !== false) {
-
-            if (preg_match('/request context:\s*(\{.*\})/is', $message, $m)) {
-                $decoded = json_decode($m[1], true);
-
-                $context = json_last_error() === JSON_ERROR_NONE
-                    ? $decoded
-                    : $m[1];
-            } elseif (preg_match('/request context:(.*)$/is', $message, $m)) {
-                $context = trim($m[1]);
-            }
-
-            $message = trim(str_replace($m[0] ?? 'request context', '', $message));
-        }
-
-        if (preg_match('/(\{.*\})\s*$/s', $message, $jsonMatch)) {
-            $json = json_decode($jsonMatch[1], true);
-
-            if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
-                $context = $json;
-                $message = trim(str_replace($jsonMatch[1], '', $message));
+            if (preg_match('/#0\s+(\/\S+\(\d+\))/', $stackTrace, $cl)) {
+                $codeLocation = $cl[1];
             }
         }
 
-        if (str_contains($message, 'Stack trace:') || preg_match('/#\d+\s+/', $message)) {
-            $parts = preg_split('/Stack trace:/', $message, 2);
+        if (preg_match('/^(.*?)\s*(\{.+\})\s*$/s', $body, $jm)) {
+            $decoded = json_decode($jm[2], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $beforeJson = trim($jm[1]);
+                if ($beforeJson !== '') {
+                    $body = $beforeJson;
+                } elseif (isset($decoded['message'])) {
+                    $body = (string) $decoded['message'];
+                    unset($decoded['message']);
+                }
 
-            if (count($parts) === 2) {
-                $message = trim($parts[0]);
-                $stackTrace = trim($parts[1]);
-            } else {
-                if (preg_match_all('/#\d+.*(?:\n|$)/', $message, $traceMatch)) {
-                    $stackTrace = implode("\n", $traceMatch[0]);
-                    $message = trim(str_replace($stackTrace, '', $message));
+                if (isset($decoded['trace'])) {
+                    $traceData = $decoded['trace'];
+                    if (is_array($traceData)) {
+                        $stackTrace = $stackTrace ?? implode("\n", $traceData);
+                    }
+                    unset($decoded['trace']);
+                }
+
+                if (isset($decoded['exception'])) {
+                    $exception = (string) $decoded['exception'];
+                    unset($decoded['exception']);
+                }
+
+                if (isset($decoded['memory'])) {
+                    $memory = $memory ?? (int) $decoded['memory'];
+                    unset($decoded['memory']);
+                }
+
+                if (isset($decoded['vars']['_SERVER']['REQUEST_URI'])) {
+                    $requestUrl = $decoded['vars']['_SERVER']['REQUEST_URI'];
+                    $requestUrl = explode('?', $requestUrl)[0];
+                }
+
+                if (!empty($decoded)) {
+                    $context = $decoded;
                 }
             }
-
-            if (preg_match('/#0\s+([^\s]+:\d+)/', $stackTrace ?? '', $m)) {
-                $codeLocation = $m[1];
-            }
         }
 
-        if (is_array($context) && isset($context['exception'])) {
-            $exception = preg_replace('/\s+/', ' ', $context['exception']);
-            unset($context['exception']);
+        if (!$requestUrl && preg_match('/\b(GET|POST|PUT|DELETE|PATCH)\s+(\/[a-zA-Z0-9_\-\/]+)/', $body, $ru)) {
+            $requestUrl = $ru[1] . ' ' . $ru[2];
         }
 
-        if (is_array($context)) {
-
-            unset($context['memory'], $context['trace']);
-
-            if (isset($context['REQUEST_URI'])) {
-                $requestUrl = $requestUrl ?: $context['REQUEST_URI'];
-            }
-
-            if (isset($context['REQUEST_METHOD'])) {
-                $displaySubtitle = $context['REQUEST_METHOD'] . ' ' . ($requestUrl ?? '');
-            }
-
-            if (empty($context)) {
-                $context = null;
-            }
+        if (!$codeLocation && $exception && preg_match('#at\s+(/.+\.php:\d+)#', $exception, $cl)) {
+            $codeLocation = $cl[1];
         }
 
-        if (trim($message) === '' || trim(strtolower($message)) === 'request context') {
-            $message = $requestUrl ?: 'Request context';
-        }
+        $message = trim($body) ?: '(no message)';
 
         return [
             'timestamp' => $timestamp,
             'level' => $level,
             'component' => $component,
             'message' => $message,
-
             'stackTrace' => $stackTrace,
-            'context' => $context,
-            'exception' => $exception,
-
             'codeLocation' => $codeLocation,
             'requestUrl' => $requestUrl,
             'memory' => $memory,
-
-            'displayTitle' => $displayTitle,
-            'displaySubtitle' => $displaySubtitle,
+            'context' => $context,
+            'exception' => $exception,
         ];
-    }
-
-    private static function splitPreGrouped(string $content): array
-    {
-        $blocks = explode("---LOGDASH_SEP---", $content);
-        return array_reverse(array_values(array_filter(array_map('trim', $blocks))));
     }
 
     private static function splitRawLines(string $content): array
     {
         $lines = explode("\n", $content);
-        $lines = array_filter(array_map('rtrim', $lines));
-        $lines = array_reverse(array_values($lines));
+        $lines = array_map(fn($l) => rtrim($l, "\r"), $lines);
 
         $rawBlocks = [];
-        $currentBlock = null;
+        $current = [];
 
         foreach ($lines as $line) {
             if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $line)) {
-                if ($currentBlock !== null) {
-                    array_unshift($currentBlock['lines'], $line);
-                    $rawBlocks[] = implode("\n", $currentBlock['lines']);
-                } else {
-                    $rawBlocks[] = $line;
+                if (!empty($current)) {
+                    $rawBlocks[] = implode("\n", $current);
                 }
-                $currentBlock = null;
+                $current = [$line];
             } else {
-                if ($currentBlock === null) {
-                    $currentBlock = ['lines' => []];
+                if (!empty($current)) {
+                    $current[] = $line;
                 }
-                array_unshift($currentBlock['lines'], $line);
             }
         }
 
-        return $rawBlocks;
+        if (!empty($current)) {
+            $rawBlocks[] = implode("\n", $current);
+        }
+
+        return array_reverse($rawBlocks);
     }
 
     private static function emptyResult(int $page, int $limit): array

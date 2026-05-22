@@ -182,9 +182,8 @@ export class LogDashboard implements OnInit, OnDestroy {
 
         if (newEntries.length > 0) {
           this.entries = [...newEntries, ...this.entries];
-          this.newEntryBoundary = Math.min(
-            this.newEntryBoundary + newEntries.length,
-          );
+          // Boundary sits at the index where old entries start
+          this.newEntryBoundary = newEntries.length;
         }
 
         this.cdr.detectChanges();
@@ -227,7 +226,14 @@ export class LogDashboard implements OnInit, OnDestroy {
 
   changeFile() {
     this.stopAutoRefresh();
-    this.router.navigate(['/logs'], { queryParams: { project: this.project } });
+
+    this.router.navigate(['/logs'], {
+      queryParams: {
+        project: this.project,
+        projectName: this.projectName,
+        file: null
+      }
+    });
   }
 
   disconnect() {

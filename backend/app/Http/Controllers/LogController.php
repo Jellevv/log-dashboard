@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use App\Services\LogParser;
 use App\Services\RemoteLogStorage;
 
@@ -14,11 +13,6 @@ class LogController extends Controller
     private const TAIL_BYTES_MAX = 5_000_000;
     private const SEARCH_CACHE_TTL = 1800;
     private const SEARCH_MAX_MATCHES = 50_000;
-
-    public function getProjects()
-    {
-        return response()->json([]);
-    }
 
     public function connect(Request $request)
     {
@@ -66,7 +60,7 @@ class LogController extends Controller
             );
 
             if (!$storage->validate()) {
-                return response()->json(['error' => 'SSH connection failed or log path is not accessible'], 422);
+                return response()->json(['error' => 'SSH connectie gefaald. Controlleer uw gegevens.'], 422);
             }
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
@@ -325,7 +319,6 @@ class LogController extends Controller
             ];
         }
 
-        // For browse/filter just read the file directly — no tail needed locally
         $result = LogParser::parseCraftLogs($filePath, $limit, $page, $level, '');
         $result['total'] = -1;
         $result['totalFiltered'] = -1;

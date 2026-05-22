@@ -16,7 +16,9 @@ class RemoteLogStorage
 
     protected function connect(): SFTP
     {
-        $sftp = new SFTP($this->host);
+        $sftp = new SFTP($this->host, 22);
+
+        $sftp->setTimeout(5);
         if (!$sftp->login($this->user, $this->password)) {
             throw new \RuntimeException('SSH login failed');
         }

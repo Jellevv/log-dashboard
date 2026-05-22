@@ -12,13 +12,13 @@ export interface Project {
 export interface DynamicProject {
   id: 'dynamic';
   label: string;
-  ssh?: {                    // now optional
+  ssh?: {
     host: string;
     user: string;
     password: string;
     path: string;
   };
-  local?: {                  // new
+  local?: {
     path: string;
   };
 }
@@ -32,14 +32,14 @@ export interface LogFiles {
 export interface LogEntry {
   timestamp: string;
   level: string;
-  component?: string;
+  component?: string | null;
   message: string;
   stackTrace?: string | null;
+  codeLocation?: string | null;
+  requestUrl?: string | null;
+  memory?: number | null;
   context?: any | null;
   exception?: string | null;
-  requestUrl?: string | null;
-  codeLocation?: string | null;
-  memory?: number | null;
 }
 
 export interface LogPage {
@@ -61,15 +61,6 @@ export class LogFilesService {
 
   constructor(private http: HttpClient) { }
 
-  getProjects(): Observable<Project[]> {
-    return this.http.get<Project[]>(`${this.base}/projects`).pipe(
-      map(() => {
-        if (!this.dynamicProject) return [];
-        return [{ id: this.dynamicProject.id, label: this.dynamicProject.label }];
-      })
-    );
-  }
-
   connectDynamicProject(payload: {
     sshHost: string;
     logsPath: string;
@@ -83,7 +74,6 @@ export class LogFilesService {
     );
   }
 
-  // No HTTP call needed — just store it locally
   connectLocalProject(path: string, projectName: string): void {
     this.dynamicProject = {
       id: 'dynamic',
@@ -101,9 +91,7 @@ export class LogFilesService {
         payload.mode = 'local';
         payload.local = this.dynamicProject.local;
       } else {
-        // END TIJDELIJK
         payload.ssh = this.dynamicProject.ssh;
-        // TIJDELIJK (live debug)
       }
       // END TIJDELIJK
 
@@ -135,9 +123,7 @@ export class LogFilesService {
         payload.mode = 'local';
         payload.local = this.dynamicProject.local;
       } else {
-        // END TIJDELIJK
         payload.ssh = this.dynamicProject.ssh;
-        // TIJDELIJK (live debug)
       }
       // END TIJDELIJK
 
