@@ -3,26 +3,44 @@
 namespace App\Services;
 
 use phpseclib3\Net\SFTP;
+use phpseclib3\Crypt\PublicKeyLoader;
 
 class RemoteLogStorage
 {
     public function __construct(
         protected string $host,
         protected string $user,
-        protected string $password,
+        protected ?string $password,
         protected string $remotePath,
+        protected ?string $sshKey = null,
+        protected ?string $sshKeyPassphrase = null,
     ) {
     }
 
     protected function connect(): SFTP
     {
-        $sftp = new SFTP($this->host, 22);
-
+        $sftp = new SFTP($this->host);
         $sftp->setTimeout(5);
-        if (!$sftp->login($this->user, $this->password)) {
-            throw new \RuntimeException('SSH login failed');
+
+        if ($this->sshKey) {
+            $key = PublicKeyLoader::load($this->sshKey, $this->sshKeyPassphrase);
+
+            if (!$sftp->login($this->user, $key)) {
+                throw new \RuntimeException('SSH key auth failed');
+            }
+
+            return $sftp;
         }
-        return $sftp;
+
+        if ($this->password) {
+            if (!$sftp->login($this->user, $this->password)) {
+                throw new \RuntimeException('SSH password auth failed');
+            }
+
+            return $sftp;
+        }
+
+        throw new \RuntimeException('No authentication method provided');
     }
 
     public function validate(): bool

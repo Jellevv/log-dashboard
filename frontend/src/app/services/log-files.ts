@@ -15,8 +15,9 @@ export interface DynamicProject {
   ssh?: {
     host: string;
     user: string;
-    password: string;
+    password?: string | null;
     path: string;
+    authMode: 'password' | 'key';
   };
   local?: {
     path: string;
@@ -64,8 +65,9 @@ export class LogFilesService {
   connectDynamicProject(payload: {
     sshHost: string;
     logsPath: string;
-    password: string;
     projectName: string;
+    authMode: 'password' | 'key';
+    password?: string | null;
   }): Observable<DynamicProject> {
     return this.http.post<DynamicProject>(`${this.base}/connect`, payload).pipe(
       tap((project) => {

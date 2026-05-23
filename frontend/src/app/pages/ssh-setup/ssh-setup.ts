@@ -24,36 +24,45 @@ export class SshSetup {
     private logService: LogFilesService
   ) { }
 
+  authMode: 'password' | 'key' = 'password';
+
   connect() {
-    if (!this.sshHost || !this.logsPath || !this.password || !this.projectName) {
+    if (!this.sshHost || !this.logsPath || !this.projectName) {
       this.error = 'Vul alle velden in.';
       return;
     }
 
-    this.error = '';
+    if (this.authMode === 'password' && !this.password) {
+      this.error = 'Wachtwoord vereist.';
+      return;
+    }
+
     this.isLoading = true;
+    this.error = '';
 
     this.logService.connectDynamicProject({
       sshHost: this.sshHost,
       logsPath: this.logsPath,
-      password: this.password,
       projectName: this.projectName,
+      authMode: this.authMode,
+      password: this.authMode === 'password' ? this.password : null,
     }).subscribe({
       next: () => {
         this.isLoading = false;
         this.router.navigate(['/logs'], {
           queryParams: {
             project: 'dynamic',
-            projectName: this.projectName,
+            projectName: this.projectName, 
           }
         });
       },
       error: (err) => {
         this.isLoading = false;
-        this.error = err.error?.error || 'Verbinding mislukt. Controleer de gegevens.';
+        this.error = err.error?.error || 'Verbinding mislukt.';
       }
     });
   }
+
   //TIJDELIJK (live debug)
   connectLocal() {
     this.logService.connectLocalProject(

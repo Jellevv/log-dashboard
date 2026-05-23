@@ -16,7 +16,6 @@ class LogController extends Controller
 
     public function connect(Request $request)
     {
-
         //TIJDELIJK (live debug) 
         if ($request->input('mode') === 'local') {
             $path = trim($request->input('logsPath'));
@@ -35,33 +34,63 @@ class LogController extends Controller
         $request->validate([
             'sshHost' => 'required|string',
             'logsPath' => 'required|string',
-            'password' => 'required|string',
             'projectName' => 'required|string',
+            'authMode' => 'required|in:password,key',
+            'password' => 'nullable|string',
         ]);
 
         $sshHost = trim($request->input('sshHost'));
+
         if (!preg_match('/^(?<user>[^@]+)@(?<host>.+)$/', $sshHost, $matches)) {
             return response()->json(['error' => 'SSH host must be in the form user@host'], 422);
+        }
+
+        $authMode = $request->input('authMode');
+
+        $password = null;
+        $sshKey = null;
+        $sshKeyPassphrase = config('ssh.passphrase');
+
+        if ($authMode === 'password') {
+            $password = $request->input('password');
+
+            if (!$password) {
+                return response()->json(['error' => 'Password required'], 422);
+            }
+        }
+
+        if ($authMode === 'key') {
+            $keyPath = config('ssh.key_path');
+
+            if (!file_exists($keyPath)) {
+                return response()->json(['error' => 'SSH key not found'], 422);
+            }
+
+            $sshKey = file_get_contents($keyPath);
         }
 
         $sshConfig = [
             'host' => trim($matches['host']),
             'user' => trim($matches['user']),
-            'password' => $request->input('password'),
             'path' => trim($request->input('logsPath')),
+            'authMode' => $authMode,
+            'password' => $authMode === 'password' ? $password : null,
         ];
 
         try {
             $storage = new RemoteLogStorage(
                 $sshConfig['host'],
                 $sshConfig['user'],
-                $sshConfig['password'],
-                $sshConfig['path']
+                $password,
+                $sshConfig['path'],
+                $sshKey,
+                $sshKeyPassphrase
             );
 
             if (!$storage->validate()) {
-                return response()->json(['error' => 'SSH connectie gefaald. Controlleer uw gegevens.'], 422);
+                return response()->json(['error' => 'SSH connectie gefaald'], 422);
             }
+
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
@@ -73,6 +102,7 @@ class LogController extends Controller
         ]);
     }
 
+
     public function getLogs(Request $request)
     {
         $projectId = $request->query('project', $request->input('project'));
@@ -83,17 +113,19 @@ class LogController extends Controller
         }
 
         try {
-            // TIJDELIJK (live debug)
             if ($project['type'] === 'local') {
                 return response()->json($this->listLocalLogs($project['path']));
             }
-            // END TIJDELIJK
+
+            [$password, $sshKey] = $this->resolveAuth($project);
 
             $storage = new RemoteLogStorage(
                 $project['host'],
                 $project['user'],
-                $project['password'] ?? '',
-                $project['path']
+                $password,
+                $project['path'],
+                $sshKey,
+                config('ssh.passphrase')
             );
 
             return response()->json($storage->listLogFiles());
@@ -112,6 +144,7 @@ class LogController extends Controller
         }
 
         $project = $this->resolveProject($request, $projectId);
+
         if (!$project) {
             return response()->json(['error' => 'Unknown project'], 404);
         }
@@ -122,17 +155,20 @@ class LogController extends Controller
         $search = trim((string) $request->query('search', $request->input('search', '')));
 
         try {
-            // TIJDELIJK (live debug)
             if ($project['type'] === 'local') {
                 $result = $this->handleLocal($project, $fileName, $page, $limit, $level, $search);
             } else {
-                // END TIJDELIJK
+                [$password, $sshKey] = $this->resolveAuth($project);
+
                 $storage = new RemoteLogStorage(
                     $project['host'],
                     $project['user'],
-                    $project['password'] ?? '',
-                    $project['path']
+                    $password,
+                    $project['path'],
+                    $sshKey,
+                    config('ssh.passphrase')
                 );
+
                 $result = $search !== ''
                     ? $this->fetchSearchPage($storage, $fileName, $page, $limit, $level, $search)
                     : $this->fetchBrowsePage($storage, $fileName, $page, $limit, $level);
@@ -142,6 +178,56 @@ class LogController extends Controller
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
+    }
+
+    private function resolveAuth(array $project): array
+    {
+        if ($project['authMode'] === 'key') {
+            $keyPath = config('ssh.key_path');
+            $key = file_get_contents($keyPath);
+
+            if ($key === false) {
+                throw new \RuntimeException('Could not read SSH key file');
+            }
+
+            return [null, $key];
+        }
+
+        return [$project['password'] ?? null, null];
+    }
+
+    private function resolveProject(Request $request, ?string $projectId): ?array
+    {
+        if (!$projectId || $projectId !== 'dynamic') {
+            return null;
+        }
+
+        $local = $request->input('local');
+        if (is_array($local) && !empty($local['path'])) {
+            return ['type' => 'local', 'path' => $local['path']];
+        }
+
+        $ssh = $request->input('ssh');
+        if (
+            !is_array($ssh)
+            || empty($ssh['host'])
+            || empty($ssh['user'])
+            || empty($ssh['path'])
+            || empty($ssh['authMode'])
+            // for password auth, password must also be present
+            || ($ssh['authMode'] === 'password' && empty($ssh['password']))
+        ) {
+            return null;
+        }
+
+        return [
+            'type' => 'ssh',
+            'host' => (string) $ssh['host'],
+            'user' => (string) $ssh['user'],
+            'path' => (string) $ssh['path'],
+            'password' => $ssh['password'] ?? null,
+            'authMode' => (string) $ssh['authMode'],
+        ];
     }
 
     private function fetchBrowsePage(
@@ -232,41 +318,6 @@ class LogController extends Controller
             'counts' => $counts,
             'page' => $page,
             'limit' => $limit,
-        ];
-    }
-
-    private function resolveProject(Request $request, ?string $projectId): ?array
-    {
-        if (!$projectId || $projectId !== 'dynamic') {
-            return null;
-        }
-
-        //TIJDELIJK (live debug)
-        $local = $request->input('local');
-        if (is_array($local) && !empty($local['path'])) {
-            return [
-                'type' => 'local',
-                'path' => $local['path'],
-            ];
-        }
-
-        $ssh = $request->input('ssh');
-        if (
-            !is_array($ssh)
-            || empty($ssh['host'])
-            || empty($ssh['user'])
-            || empty($ssh['password'])
-            || empty($ssh['path'])
-        ) {
-            return null;
-        }
-
-        return [
-            'type' => 'ssh',
-            'host' => $ssh['host'],
-            'user' => $ssh['user'],
-            'password' => $ssh['password'],
-            'path' => $ssh['path'],
         ];
     }
 

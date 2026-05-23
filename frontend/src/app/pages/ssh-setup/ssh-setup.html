@@ -31,14 +31,22 @@
 
         <div class="flex flex-col gap-1">
             <label class="text-base font-bold">
-                Wachtwoord
+                Authenticatie methode
             </label>
-            <input [(ngModel)]="password" type="password" placeholder="Wachtwoord voor SSH" class="w-[33.8125rem] h-[2.5rem]
-               bg-[#353535]
-               border border-white/50
-               rounded-lg
-               text-white
-               px-3" />
+
+            <select [(ngModel)]="authMode"
+                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3">
+
+                <option value="password">SSH Wachtwoord</option>
+                <option value="key">SSH Key</option>
+
+            </select>
+            @if (authMode === 'password') {
+            <div class="flex flex-col ">
+                <input [(ngModel)]="password" type="password" placeholder="Wachtwoord voor SSH"
+                    class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
+            </div>
+            }
         </div>
 
         <div class="flex flex-col gap-1">
