@@ -84,8 +84,16 @@ class RemoteLogStorage
                 'name' => $item,
                 'size' => $size === false ? 'N/A' : round($size / 1024, 1) . ' KB',
                 'modified' => $mtime === false ? 'N/A' : date('d-m-Y H:i', $mtime),
+                'mtime' => $mtime ?: 0,
             ];
         }
+
+        usort($files, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
+
+        $files = array_map(function ($f) {
+            unset($f['mtime']);
+            return $f;
+        }, $files);
 
         return $files;
     }
@@ -130,6 +138,12 @@ class RemoteLogStorage
 
     private function resolveRemoteFile(string $fileName): string
     {
-        return rtrim($this->remotePath, '/') . '/' . basename($fileName);
+        $base = basename($fileName);
+
+        if (pathinfo($base, PATHINFO_EXTENSION) !== 'log') {
+            throw new \RuntimeException('Only .log files are allowed');
+        }
+
+        return rtrim($this->remotePath, '/') . '/' . $base;
     }
 }

@@ -9,24 +9,16 @@
             <label class="text-base font-bold">
                 SSH User & Host
             </label>
-            <input [(ngModel)]="sshHost" type="text" placeholder="user@192.168.1.10" class="w-[33.8125rem] h-[2.5rem]
-               bg-[#353535]
-               border border-white/50
-               rounded-lg
-               text-white
-               px-3" />
+            <input [(ngModel)]="sshHost" type="text" name="ssh-host" autocomplete="on" placeholder="user@192.168.1.10"
+                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
         </div>
 
         <div class="flex flex-col gap-1">
             <label class="text-base font-bold">
                 Pad naar logs
             </label>
-            <input [(ngModel)]="logsPath" type="text" placeholder="/var/www/html/storage/logs" class="w-[33.8125rem] h-[2.5rem]
-               bg-[#353535]
-               border border-white/50
-               rounded-lg
-               text-white
-               px-3" />
+            <input [(ngModel)]="logsPath" type="text" name="logs-path" placeholder="/var/www/html/storage/logs"
+                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
         </div>
 
         <div class="flex flex-col gap-1">
@@ -43,7 +35,7 @@
             </select>
             @if (authMode === 'password') {
             <div class="flex flex-col ">
-                <input [(ngModel)]="password" type="password" placeholder="Wachtwoord voor SSH"
+                <input [(ngModel)]="password" type="password" name="password" placeholder="Wachtwoord voor SSH"
                     class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
             </div>
             }
@@ -53,12 +45,8 @@
             <label class="text-base font-bold">
                 Projectnaam
             </label>
-            <input [(ngModel)]="projectName" type="text" placeholder="my-project" class="w-[33.8125rem] h-[2.5rem]
-               bg-[#353535]
-               border border-white/50
-               rounded-lg
-               text-white
-               px-3" />
+            <input [(ngModel)]="projectName" type="text" name="project-name" placeholder="my-project"
+                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
         </div>
     </div>
 

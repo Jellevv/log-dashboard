@@ -49,7 +49,7 @@ class LogController extends Controller
 
         $password = null;
         $sshKey = null;
-        $sshKeyPassphrase = config('ssh.passphrase');
+        $sshKeyPassphrase = is_string(config('ssh.passphrase')) ? config('ssh.passphrase') : null;
 
         if ($authMode === 'password') {
             $password = $request->input('password');
@@ -81,7 +81,7 @@ class LogController extends Controller
             $storage = new RemoteLogStorage(
                 $sshConfig['host'],
                 $sshConfig['user'],
-                $password,
+                $sshConfig['password'],
                 $sshConfig['path'],
                 $sshKey,
                 $sshKeyPassphrase
@@ -248,7 +248,7 @@ class LogController extends Controller
                 $storage->downloadTailToTemp($fileName, $tailBytes);
 
             try {
-                $result = LogParser::parseCraftLogs($tempPath, $limit, $page, $level, '');
+                $result = LogParser::parseLogs($tempPath, $limit, $page, $level, '');
             } finally {
                 @unlink($tempPath);
             }
@@ -287,7 +287,7 @@ class LogController extends Controller
             function () use ($storage, $fileName, $level, $search): array {
                 $tempPath = $storage->downloadToTemp($fileName);
                 try {
-                    $result = LogParser::parseCraftLogs(
+                    $result = LogParser::parseLogs(
                         $tempPath,
                         self::SEARCH_MAX_MATCHES,
                         1,
@@ -347,7 +347,7 @@ class LogController extends Controller
         if ($search !== '') {
             $cacheKey = 'logdash:local:' . md5($filePath . $level . $search);
             $allMatches = cache()->remember($cacheKey, self::SEARCH_CACHE_TTL, function () use ($filePath, $level, $search) {
-                $result = LogParser::parseCraftLogs($filePath, self::SEARCH_MAX_MATCHES, 1, $level, $search);
+                $result = LogParser::parseLogs($filePath, self::SEARCH_MAX_MATCHES, 1, $level, $search);
                 return $result['entries'];
             });
 
@@ -370,7 +370,7 @@ class LogController extends Controller
             ];
         }
 
-        $result = LogParser::parseCraftLogs($filePath, $limit, $page, $level, '');
+        $result = LogParser::parseLogs($filePath, $limit, $page, $level, '');
         $result['total'] = -1;
         $result['totalFiltered'] = -1;
         return $result;

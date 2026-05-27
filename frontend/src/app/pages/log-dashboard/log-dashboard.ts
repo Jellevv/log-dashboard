@@ -23,9 +23,6 @@ export class LogDashboard implements OnInit, OnDestroy {
   searchQuery = '';
 
   entries: LogEntry[] = [];
-  total = 0;
-  counts = { ERROR: 0, WARNING: 0, INFO: 0 };
-  totalFiltered = 0;
 
   currentPage = 1;
   readonly PAGE_SIZE = 100;
@@ -115,10 +112,6 @@ export class LogDashboard implements OnInit, OnDestroy {
         } else {
           this.entries = page.entries;
         }
-
-        this.total = page.total;
-        this.counts = page.counts ?? { ERROR: 0, WARNING: 0, INFO: 0 };
-        this.totalFiltered = page.totalFiltered;
 
         this.hasMore =
           page.entries.length === this.PAGE_SIZE &&
@@ -258,10 +251,6 @@ export class LogDashboard implements OnInit, OnDestroy {
       case 'INFO': return base + ' border-l-4 border-l-cyan-500';
       default: return base + ' border-l-4 border-l-gray-500';
     }
-  }
-
-  get totalFilteredLabel(): string {
-    return this.totalFiltered === -1 ? '100+' : String(this.totalFiltered);
   }
 
   formatBytes(bytes: number | null | undefined): string {

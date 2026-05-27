@@ -4,7 +4,7 @@ namespace App\Services;
 
 class LogParser
 {
-    public static function parseCraftLogs(
+    public static function parseLogs(
         string $filePath,
         int $limit = 100,
         int $page = 1,
@@ -16,8 +16,8 @@ class LogParser
             return self::emptyResult($page, $limit);
         }
 
-        $isPreGrouped = str_contains($content, '---LOGDASH_SEP---');
-        $rawBlocks = self::splitRawLines($content);
+        $isLaravel = (bool) preg_match('/^\[\d{4}-\d{2}-\d{2}/', ltrim($content));
+        $rawBlocks = self::splitRawLines($content, $isLaravel);
 
         $search = strtolower(trim($search));
         $levelFilter = strtoupper(trim($level));
@@ -28,7 +28,7 @@ class LogParser
         $counts = ['ERROR' => 0, 'WARNING' => 0, 'INFO' => 0];
 
         foreach ($rawBlocks as $block) {
-            $entry = self::parseSingleEntry($block);
+            $entry = self::parseSingleEntry($block, $isLaravel);
             if (!$entry)
                 continue;
 
@@ -66,18 +66,29 @@ class LogParser
         ];
     }
 
-    private static function parseSingleEntry(string $raw): ?array
+    private static function parseSingleEntry(string $raw, bool $isLaravel): ?array
     {
         $raw = trim($raw);
 
-        if (
-            !preg_match(
-                '/^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(?<level>[^\]]+)\](?:\s+\[(?<component>[^\]]+)\])?\s*(?<body>.*)/s',
-                $raw,
-                $m
+        if ($isLaravel) {
+            if (
+                !preg_match(
+                    '/^\[(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+\w+\.(?<level>[A-Z]+):\s*(?<body>.*)/s',
+                    $raw,
+                    $m
+                )
             )
-        )
-            return null;
+                return null;
+        } else {
+            if (
+                !preg_match(
+                    '/^(?<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+\[(?<level>[^\]]+)\](?:\s+\[(?<component>[^\]]+)\])?\s*(?<body>.*)/s',
+                    $raw,
+                    $m
+                )
+            )
+                return null;
+        }
 
         $timestamp = $m['timestamp'];
         $level = strtoupper(preg_replace('/^.*\./', '', $m['level']));
@@ -97,13 +108,34 @@ class LogParser
             $body = trim(preg_replace('/\{\s*\}/', '', $body));
         }
 
-        if (str_contains($body, 'Stack trace:')) {
-            [$before, $after] = explode('Stack trace:', $body, 2);
+        $stackTraceMarker = str_contains($body, '[stacktrace]') ? '[stacktrace]' : 'Stack trace:';
+
+        if (str_contains($body, $stackTraceMarker)) {
+            [$before, $after] = explode($stackTraceMarker, $body, 2);
             $body = rtrim($before);
             $stackTrace = trim($after);
 
-            if (preg_match('/#0\s+(\/\S+\(\d+\))/', $stackTrace, $cl)) {
-                $codeLocation = $cl[1];
+            $frames = [];
+            preg_match_all('/#\d+\s+(\/\S+\.php[\(\:]\d+[\)\:]?)/', $stackTrace, $frames);
+
+            $skipPatterns = ['vendor/', 'index.php', '{main}', '[internal'];
+
+            foreach ($frames[1] as $frame) {
+                $skip = false;
+                foreach ($skipPatterns as $pattern) {
+                    if (str_contains($frame, $pattern)) {
+                        $skip = true;
+                        break;
+                    }
+                }
+                if (!$skip) {
+                    $codeLocation = $frame;
+                    break;
+                }
+            }
+
+            if (!$codeLocation && !empty($frames[1])) {
+                $codeLocation = $frames[1][0];
             }
         }
 
@@ -122,6 +154,30 @@ class LogParser
                     $traceData = $decoded['trace'];
                     if (is_array($traceData)) {
                         $stackTrace = $stackTrace ?? implode("\n", $traceData);
+
+                        foreach ($traceData as $frame) {
+                            if (!is_string($frame) || !str_contains($frame, '.php'))
+                                continue;
+                            if (str_contains($frame, 'vendor/'))
+                                continue;
+
+                            if (preg_match('/(\/\S+\.php[\(\:]\d+[\)\:]?)/', $frame, $match)) {
+                                $codeLocation = $match[1];
+                                break;
+                            }
+                        }
+
+                        if (!$codeLocation) {
+                            foreach ($traceData as $frame) {
+                                if (!is_string($frame) || !str_contains($frame, '.php'))
+                                    continue;
+
+                                if (preg_match('/(\/\S+\.php[\(\:]\d+[\)\:]?)/', $frame, $match)) {
+                                    $codeLocation = $match[1];
+                                    break;
+                                }
+                            }
+                        }
                     }
                     unset($decoded['trace']);
                 }
@@ -171,7 +227,7 @@ class LogParser
         ];
     }
 
-    private static function splitRawLines(string $content): array
+    private static function splitRawLines(string $content, bool $isLaravel): array
     {
         $lines = explode("\n", $content);
         $lines = array_map(fn($l) => rtrim($l, "\r"), $lines);
@@ -180,7 +236,11 @@ class LogParser
         $current = [];
 
         foreach ($lines as $line) {
-            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $line)) {
+            $isNewEntry = $isLaravel
+                ? (bool) preg_match('/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]/', $line)
+                : (bool) preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $line);
+
+            if ($isNewEntry) {
                 if (!empty($current)) {
                     $rawBlocks[] = implode("\n", $current);
                 }
