@@ -175,7 +175,6 @@ export class LogDashboard implements OnInit, OnDestroy {
 
         if (newEntries.length > 0) {
           this.entries = [...newEntries, ...this.entries];
-          // Boundary sits at the index where old entries start
           this.newEntryBoundary = newEntries.length;
         }
 

@@ -38,7 +38,7 @@
         <div (click)="selectFile(file.name)" [class]="'flex items-center w-full h-16 border rounded-[0.5rem] px-4 gap-4 cursor-pointer transition ' +
                    (selectedFile === file.name
                      ? 'bg-[#404040] border-white/60'
-                     : 'bg-[#353535] border-white/20 hover:bg-[#404040] hover:border-white/50')">
+                     : 'bg-transparent border-white/20 hover:bg-[#404040] hover:border-white/50')">
 
             <div class="flex items-center self-stretch pr-4 border-r border-white/20 shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 26 31" fill="none">
@@ -71,7 +71,7 @@
 
     @if (logFiles.length > 0) {
     <button (click)="openDashboard()" [disabled]="!selectedFile" class="h-10
-               bg-[#353535]
+               bg-transparent
                my-8
                border border-white/50
                rounded-lg

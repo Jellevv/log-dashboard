@@ -148,7 +148,7 @@
                rounded-lg
                text-white
                font-bold
-               hover:bg-[#353535]
+               hover:bg-transparent
                hover:border-white/80
                disabled:opacity-30
                disabled:cursor-not-allowed
@@ -224,26 +224,26 @@
         <div class="grid grid-cols-2 gap-3">
 
           @if (selectedLog.codeLocation) {
-          <div class="bg-[#353535] border border-white/10 rounded-lg px-3 py-2.5">
+          <div class="bg-transparent border border-white/10 rounded-lg px-3 py-2.5">
             <div class="text-xs text-white/40 mb-1">Locatie in code:</div>
             <div class="text-xs font-mono text-white/80 break-all">{{ selectedLog.codeLocation }}</div>
           </div>
           }
 
-          <div class="bg-[#353535] border border-white/10 rounded-lg px-3 py-2.5">
+          <div class="bg-transparent border border-white/10 rounded-lg px-3 py-2.5">
             <div class="text-xs text-white/40 mb-1">Tijdstip:</div>
             <div class="text-xs font-mono text-white/80">{{ selectedLog.timestamp }}</div>
           </div>
 
           @if (selectedLog.memory) {
-          <div class="bg-[#353535] border border-white/10 rounded-lg px-3 py-2.5">
+          <div class="bg-transparent border border-white/10 rounded-lg px-3 py-2.5">
             <div class="text-xs text-white/40 mb-1">Geheugen:</div>
             <div class="text-xs font-mono text-white/80">{{ formatBytes(selectedLog.memory) }}</div>
           </div>
           }
 
           @if (selectedLog.requestUrl) {
-          <div class="bg-[#353535] border border-white/10 rounded-lg px-3 py-2.5">
+          <div class="bg-transparent border border-white/10 rounded-lg px-3 py-2.5">
             <div class="text-xs text-white/40 mb-1">Request URL:</div>
             <div class="text-xs font-mono text-cyan-400 break-all">{{ selectedLog.requestUrl }}</div>
           </div>

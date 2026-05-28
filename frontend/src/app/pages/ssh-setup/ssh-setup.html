@@ -1,43 +1,83 @@
 <div class="px-16 flex flex-col justify-center text-white">
 
-    <h1 class="text-2xl font-bold mt-10 mb-8">
+    <h1 [class]="'text-2xl font-bold mt-10 ' + (savedConnections.length > 0 ? 'mb-0' : 'mb-8')">
         SSH Verbinding Instellen
     </h1>
 
-    <div class="flex flex-col gap-y-6">
+    @if (savedConnections.length > 0) {
+    <div class="mt-2">
+        <button (click)="showSaved = !showSaved" class="flex justify-between px-3 py-3
+             bg-transparent w-full
+             hover:bg-white/5 rounded-lg">
+            <span class="text-sm font-bold text-white/70">Opgeslagen verbindingen</span>
+            <div class="flex gap-2">
+                <span class="text-xs text-white/30 bg-white/10 px-2 py-0.5 rounded-full">
+                    {{ savedConnections.length }}
+                </span>
+                <span class="text-xs text-white/30" [style.transform]="showSaved ? 'rotate(180deg)' : 'rotate(0deg)'">
+                    ▼
+                </span>
+            </div>
+        </button>
+
+        @if (showSaved) {
+        <div class="flex flex-col mb-5 gap-1">
+            @for (conn of savedConnections; track conn.id) {
+            <div (click)="loadConnection(conn)" class="flex items-center justify-between w-full px-4 py-3
+                 bg-black/10 border border-white/10 rounded-lg
+                 hover:bg-[#404040] hover:border-white/40
+                 cursor-pointer transition">
+                <div class="flex flex-col gap-0.5">
+                    <p class="text-sm font-bold">{{ conn.project_name }}</p>
+                    <p class="text-xs text-white/40">{{ conn.ssh_host }}</p>
+                </div>
+                <button (click)="deleteConnection(conn.id, $event)"
+                    class="text-white/20 hover:text-red-400 transition text-lg">
+                    ✕
+                </button>
+            </div>
+            }
+        </div>
+        }
+    </div>
+    }
+
+    <div class="flex flex-col gap-y-6 w-[33.8125rem]">
         <div class="flex flex-col gap-1">
             <label class="text-base font-bold">
                 SSH User & Host
             </label>
-            <input [(ngModel)]="sshHost" type="text" name="ssh-host" autocomplete="on" placeholder="user@192.168.1.10"
-                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
+            <input [(ngModel)]="sshHost" type="text" name="ssh-host" autocomplete="off" placeholder="user@192.168.1.10"
+                class="w-full h-[2.5rem] bg-transparent border border-white/50 rounded-lg text-white px-3" />
         </div>
 
         <div class="flex flex-col gap-1">
             <label class="text-base font-bold">
                 Pad naar logs
             </label>
-            <input [(ngModel)]="logsPath" type="text" name="logs-path" placeholder="/var/www/html/storage/logs"
-                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
+            <input [(ngModel)]="logsPath" type="text" name="logs-path" autocomplete="off"
+                placeholder="/var/www/html/storage/logs"
+                class="w-full h-[2.5rem] bg-transparent border border-white/50 rounded-lg text-white px-3" />
         </div>
 
         <div class="flex flex-col gap-1">
-            <label class="text-base font-bold">
-                Authenticatie methode
-            </label>
+            <label class="text-base font-bold">Authenticatie methode</label>
 
-            <select [(ngModel)]="authMode"
-                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3">
-
-                <option value="password">SSH Wachtwoord</option>
-                <option value="key">SSH Key</option>
-
-            </select>
-            @if (authMode === 'password') {
-            <div class="flex flex-col ">
-                <input [(ngModel)]="password" type="password" name="password" placeholder="Wachtwoord voor SSH"
-                    class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
+            <div class="flex w-full bg-transparent border border-white/50 rounded-lg overflow-hidden">
+                <button (click)="authMode = 'password'" [class]="'flex-1 h-7 text-xs font-bold transition ' +
+                 (authMode === 'password' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50')">
+                    SSH Wachtwoord
+                </button>
+                <div class="w-px bg-white/20 my-2"></div>
+                <button (click)="authMode = 'key'" [class]="'flex-1 h-7 text-xs font-bold transition ' +
+                 (authMode === 'key' ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white/50')">
+                    SSH Key
+                </button>
             </div>
+
+            @if (authMode === 'password') {
+            <input [(ngModel)]="password" type="password" placeholder="Wachtwoord voor SSH"
+                class="w-full h-[2.5rem] bg-transparent border border-white/50 rounded-lg text-white px-3 mt-2" />
             }
         </div>
 
@@ -45,8 +85,8 @@
             <label class="text-base font-bold">
                 Projectnaam
             </label>
-            <input [(ngModel)]="projectName" type="text" name="project-name" placeholder="my-project"
-                class="w-[33.8125rem] h-[2.5rem] bg-[#353535] border border-white/50 rounded-lg text-white px-3" />
+            <input [(ngModel)]="projectName" type="text" name="project-name" autocomplete="off" placeholder="my-project"
+                class="w-full h-[2.5rem] bg-transparent border border-white/50 rounded-lg text-white px-3" />
         </div>
     </div>
 
@@ -54,17 +94,32 @@
     <p class="text-red-400 text-sm mt-2">{{ error }}</p>
     }
 
-    <button (click)="connect()" class="h-10
-         bg-[#353535]
-         my-8
-         border border-white
-         rounded-lg
-         text-white
-         font-bold
-         hover:bg-[#404040]
-         transition" [disabled]="isLoading">
-        {{ isLoading ? 'Verbinding maken...' : 'Verbinding maken →' }}
-    </button>
+    <div class="flex items-center gap-3 my-8">
+        <button (click)="saveConnection()" class="h-10 flex-1
+             bg-transparent
+             border border-white/20
+             rounded-lg
+             text-white/40
+             font-bold
+             hover:bg-transparent
+             hover:text-white/60
+             hover:border-white/40
+             transition">
+            Opslaan ↓
+        </button>
+
+        <button (click)="connect()" class="h-10 flex-2
+             bg-transparent
+             border border-white
+             rounded-lg
+             text-white
+             font-bold
+             hover:bg-[#404040]
+             transition
+             w-2/3" [disabled]="isLoading">
+            {{ isLoading ? 'Verbinding maken...' : 'Verbinding maken →' }}
+        </button>
+    </div>
 
     <!-- TIJDELIJK (live debug) -->
     <button (click)="connectLocal()" class="text-xs text-white/20">

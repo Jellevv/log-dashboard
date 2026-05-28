@@ -52,6 +52,14 @@ export interface LogPage {
   limit: number;
 }
 
+export interface SavedConnection {
+  id: number;
+  project_name: string;
+  ssh_host: string;
+  logs_path: string;
+  created_at: string;
+}
+
 export type Filter = 'ALL' | 'ERROR' | 'WARNING' | 'INFO';
 
 @Injectable({ providedIn: 'root' })
@@ -82,6 +90,22 @@ export class LogFilesService {
       label: projectName,
       local: { path },
     };
+  }
+
+  getSavedConnections(): Observable<SavedConnection[]> {
+    return this.http.get<SavedConnection[]>(`${this.base}/connections`);
+  }
+
+  saveConnection(data: {
+    project_name: string;
+    ssh_host: string;
+    logs_path: string;
+  }): Observable<SavedConnection> {
+    return this.http.post<SavedConnection>(`${this.base}/connections`, data);
+  }
+
+  deleteConnection(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/connections/${id}`);
   }
 
   getLogs(projectId: string): Observable<LogFiles[]> {

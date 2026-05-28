@@ -92,6 +92,20 @@ class LogController extends Controller
             }
 
         } catch (\Throwable $e) {
+            $message = $e->getMessage();
+
+            if (str_contains($message, 'getaddrinfo') || str_contains($message, 'php_network')) {
+                return response()->json(['error' => 'Host niet gevonden. Controleer het adres.'], 422);
+            }
+
+            if (str_contains($message, 'auth failed')) {
+                return response()->json(['error' => 'Authenticatie mislukt. Controleer uw wachtwoord of sleutel.'], 422);
+            }
+
+            if (str_contains($message, 'timed out') || str_contains($message, 'Connection refused')) {
+                return response()->json(['error' => 'Verbinding geweigerd. Controleer host en poort.'], 422);
+            }
+
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
@@ -214,7 +228,6 @@ class LogController extends Controller
             || empty($ssh['user'])
             || empty($ssh['path'])
             || empty($ssh['authMode'])
-            // for password auth, password must also be present
             || ($ssh['authMode'] === 'password' && empty($ssh['password']))
         ) {
             return null;
