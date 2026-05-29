@@ -3,13 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, take, takeUntil } from 'rxjs/operators';
+import { take, takeUntil } from 'rxjs/operators';
 import { LogFilesService, LogEntry, Filter } from '../../services/log-files';
+import { NgxJsonViewerModule } from 'ngx-json-viewer';
+
 
 @Component({
   selector: 'app-log-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgxJsonViewerModule],
   templateUrl: './log-dashboard.html',
   styleUrl: './log-dashboard.css',
 })
@@ -258,5 +260,4 @@ export class LogDashboard implements OnInit, OnDestroy {
     if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1_048_576).toFixed(1)} MB`;
   }
-
 }

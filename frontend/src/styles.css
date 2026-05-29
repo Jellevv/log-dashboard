@@ -1,3 +1,25 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import 'tailwindcss';
+
+ngx-json-viewer .segment-key {
+  color: #7dd3fc !important;
+}
+ngx-json-viewer .segment-separator {
+  color: #94a3b8 !important;
+}
+ngx-json-viewer .segment-value {
+  color: #86efac !important;
+}
+ngx-json-viewer .string-value {
+  color: #86efac !important;
+}
+ngx-json-viewer .number-value {
+  color: #fbbf24 !important;
+}
+ngx-json-viewer .boolean-value {
+  color: #f87171 !important;
+}
+ngx-json-viewer .null-value {
+  color: #94a3b8 !important;
+}
