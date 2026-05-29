@@ -37,7 +37,7 @@ export interface LogEntry {
   message: string;
   stackTrace?: string | null;
   codeLocation?: string | null;
-  requestUrl?: string | null;
+  requestUrI?: string | null;
   memory?: number | null;
   context?: any | null;
   exception?: string | null;

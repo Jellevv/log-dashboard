@@ -98,7 +98,7 @@ class LogParser
         $memory = null;
         $stackTrace = null;
         $codeLocation = null;
-        $requestUrl = null;
+        $requestUrI = null;
         $context = null;
         $exception = null;
 
@@ -193,8 +193,8 @@ class LogParser
                 }
 
                 if (isset($decoded['vars']['_SERVER']['REQUEST_URI'])) {
-                    $requestUrl = $decoded['vars']['_SERVER']['REQUEST_URI'];
-                    $requestUrl = explode('?', $requestUrl)[0];
+                    $requestUrI = $decoded['vars']['_SERVER']['REQUEST_URI'];
+                    $requestUrI = explode('?', $requestUrI)[0];
                 }
 
                 if (!empty($decoded)) {
@@ -203,8 +203,8 @@ class LogParser
             }
         }
 
-        if (!$requestUrl && preg_match('/\b(GET|POST|PUT|DELETE|PATCH)\s+(\/[a-zA-Z0-9_\-\/]+)/', $body, $ru)) {
-            $requestUrl = $ru[1] . ' ' . $ru[2];
+        if (!$requestUrI && preg_match('/\b(GET|POST|PUT|DELETE|PATCH)\s+(\/[a-zA-Z0-9_\-\/]+)/', $body, $ru)) {
+            $requestUrI = $ru[1] . ' ' . $ru[2];
         }
 
         if (!$codeLocation && $exception && preg_match('#at\s+(/.+\.php:\d+)#', $exception, $cl)) {
@@ -220,7 +220,7 @@ class LogParser
             'message' => $message,
             'stackTrace' => $stackTrace,
             'codeLocation' => $codeLocation,
-            'requestUrl' => $requestUrl,
+            'requestUrI' => $requestUrI,
             'memory' => $memory,
             'context' => $context,
             'exception' => $exception,
